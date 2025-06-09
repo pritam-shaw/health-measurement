@@ -22,6 +22,10 @@ public class MeasurementDataController {
     public List<MeasurementData>getMeasurementDataList(){
         return service.get();
     }
+    @GetMapping("/last20measurementdatalist")
+    public List<MeasurementData>getLast20MeasurementDataList(){
+        return service.getLast20();
+    }
 
     @GetMapping("/measurementdata/{id}")
     public MeasurementData getMeasurementData(@PathVariable int id) {

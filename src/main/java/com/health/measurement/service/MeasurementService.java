@@ -15,6 +15,9 @@ public class MeasurementService {
     public List<MeasurementData> get(){
         return repo.findAll();
     }
+    public List<MeasurementData> getLast20(){
+        return repo.findLast20Entries();
+    }
     public MeasurementData get(int id) {
 
         return repo.findById(id).get();
