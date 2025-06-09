@@ -12,6 +12,7 @@
 - Spring Data JPA
 - PostgreSQL (configurable)
 - Lombok (for cleaner code)
+- Hibernate
 
 ## 🏗️ Project Structure
 src/<br>
