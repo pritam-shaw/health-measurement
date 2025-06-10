@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Health Monitoring of Transformer</title>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Raphael and JustGage for gauges -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/justgage@1.3.5/justgage.min.js"></script>
+
+<style>
+  /* Reset and base */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0; padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f0f4f8;
+    color: #222;
+  }
+
+  h2 {
+    text-align: center;
+    margin: 25px 0 40px 0;
+    font-weight: 700;
+  }
+
+  /* Main container */
+  .container {
+    max-width: 960px;
+    margin: 0 auto 60px auto;
+    background: #fff;
+    border-radius: 15px;
+    padding: 30px 30px 40px 30px;
+    box-shadow: 0 8px 30px rgb(0 0 0 / 0.12);
+  }
+
+  /* Flex layout for charts + gauges */
+  .main-flex {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Charts column - vertical stack */
+  .charts-column {
+    flex: 1 1 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    min-width: 350px;
+  }
+
+  /* Each chart canvas style */
+  canvas {
+    background: #fff;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    height: 300px !important;
+    width: 100% !important;
+  }
+
+  /* Gauges column - 3x2 grid with 5 gauges (3 top, 2 below) */
+  /* .gauges-column {
+    flex: 1 1 400px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 160px;
+    gap: 25px 25px;
+    min-width: 380px;
+  } */
+
+  .gauges-column {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 columns */
+    grid-template-rows: repeat(2, 100px); /* 2 rows, 100px each */
+    gap: 10px; /* spacing between grid items */
+    padding: 10px;
+    background: #f0f0f0;
+  }
+
+  .gauge-container {
+    font-size: 24px;
+    background: #fafafa;
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: 0 4px 10px rgb(0 0 0 / 0.05);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Position last two gauges in second row, first two columns */
+  .gauges-column > div:nth-child(4) {
+    grid-column: 1 / 2;
+  }
+  .gauges-column > div:nth-child(5) {
+    grid-column: 2 / 3;
+  }
+
+  /* Each gauge wrapper */
+  /* .gauge-container {
+    background: #fafafa;
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: 0 4px 10px rgb(0 0 0 / 0.05);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  } */
+
+  /* Input area below */
+  .input-area {
+    max-width: 960px;
+    margin: 0 auto 40px auto;
+    background: #fff;
+    border-radius: 15px;
+    padding: 25px 25px 30px 25px;
+    box-shadow: 0 8px 30px rgb(0 0 0 / 0.10);
+    text-align: center;
+  }
+
+  .input-area input {
+    padding: 10px 14px;
+    margin: 10px 12px;
+    width: 140px;
+    font-size: 15px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    transition: border-color 0.3s ease;
+  }
+  .input-area input:focus {
+    outline: none;
+    border-color: #3a86ff;
+    box-shadow: 0 0 8px rgba(58,134,255,0.3);
+  }
+
+  .input-area button {
+    padding: 12px 40px;
+    margin-top: 20px;
+    font-size: 17px;
+    font-weight: 600;
+    border: none;
+    background: #3a86ff;
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(58,134,255,0.4);
+    transition: background 0.3s ease;
+  }
+  .input-area button:hover {
+    background: #265dcc;
+  }
+
+  /* Responsive tweaks */
+  @media (max-width: 900px) {
+    .main-flex {
+      flex-direction: column;
+      gap: 50px;
+    }
+    .gauges-column {
+      grid-template-columns: repeat(3, 1fr);
+      grid-auto-rows: 160px;
+      justify-items: center;
+      min-width: auto;
+    }
+  }
+
+</style>
+
+</head>
+<body>
+
+  <h2>Health Monitoring of Transformer</h2>
+
+  <!-- <div class="container"> -->
+
+    <div class="main-flex">
+      <!-- Left side: Two charts stacked -->
+      <div class="charts-column" style="position: relative;">
+        <canvas id="tempChart"></canvas>
+        <canvas id="currChart"></canvas>
+        <div class="gauge-container" style="position: absolute; top: 15%; left:45%;"><div id="temperature" style="width:100px; height:100px;"></div></div>
+      </div>
+
+      <!-- Right side: 6 gauges in 3x2 grid (3 on top, 3 below) -->
+      <div class="gauges-column">
+        <div class="gauge-container"><div id="pzemVoltage" style="width:140px; height:140px;"></div></div>
+        <div class="gauge-container"><div id="pzemCurrent" style="width:140px; height:140px;"></div></div>
+        <div class="gauge-container"><div id="pzemPower" style="width:140px; height:140px;"></div></div>
+        <div class="gauge-container"><div id="pzemEnergy" style="width:140px; height:140px;"></div></div>
+        <div class="gauge-container"><div id="pzemFrequency" style="width:140px; height:140px;"></div></div>
+        <div class="gauge-container"><div id="acsCurrent" style="width:140px; height:140px;"></div></div>
+      </div>
+    </div>
+
+  <!-- </div> -->
+
+<script>
+  // Global data arrays for chart
+  let timeLabels = [];
+  let tempData = [];
+  let currData = [];
+
+  // Utility - get current time string HH:MM:SS
+  function getCurrentTime() {
+    return new Date().toLocaleTimeString('en-US', { hour12: false });
+  }
+
+  // Create line charts with Chart.js
+  function createLineChart(ctx, label, color) {
+    return new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: timeLabels,
+        datasets: [{
+          label: label,
+          data: [],
+          borderColor: color,
+          backgroundColor: color + '55',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            title: { display: true, text: 'Time (HH:MM:SS)' },
+            ticks: { maxRotation: 60, minRotation: 45 }
+          },
+          y: {
+            beginAtZero: true,
+            grace: '10%',
+            title: { display: true, text: label }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: {
+              font: { size: 16, weight: '600' }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  const tempChart = createLineChart(document.getElementById('tempChart').getContext('2d'), 'Temperature (°C)', 'orange');
+  const currChart = createLineChart(document.getElementById('currChart').getContext('2d'), 'Current (A)', 'blue');
+
+  // JustGage instances for 5 gauges
+  const pzemVoltageGauge = new JustGage({
+    id: "pzemVoltage",
+    value: 0,
+    min: 150,
+    max: 250,
+    title: "Voltage",
+    label: "V",
+    pointer: true,
+    gaugeWidthScale: 0.6,
+    counter: true,
+    levelColorsGradient: true,
+    formatNumber: true,
+    decimals: 2 
+  });
+  const pzemCurrentGauge = new JustGage({
+    id: "pzemCurrent",
+    value: 0,
+    min: 0,
+    max: .2,
+    title: "Current",
+    label: "A",
+    pointer: true,
+    gaugeWidthScale: 0.6,
+    counter: true,
+    levelColorsGradient: true,
+    formatNumber: true,
+    decimals: 2 
+  });
+  const acsCurrentGauge = new JustGage({
+    id: "acsCurrent",
+    value: 0,
+    min: 0,
+    max: 10,
+    title: "Current",
+    label: "ACS",
+    pointer: true,
+    gaugeWidthScale: 0.6,
+    counter: true,
+    levelColorsGradient: true,
+    formatNumber: true,
+    decimals: 2 
+  });
+  const pzemPowerGauge = new JustGage({
+    id: "pzemPower",
+    value: 0,
+    min: 0,
+    max: 10,
+    title: "Power",
+    label: "W",
+    pointer: true,
+    gaugeWidthScale: 0.6,
+    counter: true,
+    levelColorsGradient: true,
+    formatNumber: true,
+    decimals: 2 
+  });
+  const pzemEnergyGauge = new JustGage({
+    id: "pzemEnergy",
+    value: 0,
+    min: 0,
+    max: .2,
+    title: "Energy",
+    label: "Wh",
+    pointer: true,
+    gaugeWidthScale: 0.6,
+    counter: true,
+    levelColorsGradient: true,
+    formatNumber: true,
+    decimals: 2 
+  });
+  const temperatureGuage = new JustGage({
+    id: "temperature",
+    value: 0,
+    min: 0,
+    max: 100,
+    title: "Temperature",
+    label: "°C",
+    pointer: true,
+    gaugeWidthScale: 0.6,
+    counter: true,
+    levelColorsGradient: true,
+    formatNumber: true,
+    decimals: 2 
+  });
+  const pzemFrequencyGauge = new JustGage({
+    id: "pzemFrequency",
+    value: 0,
+    min: 0,
+    max: 60,
+    title: "Frequency",
+    label: "Hz",
+    pointer: true,
+    gaugeWidthScale: 0.6,
+    counter: true,
+    levelColorsGradient: true,
+    formatNumber: true,
+    decimals: 2 
+  });
+
+  // Function to update gauges
+  function updateGauges(v, c, p, e, f, acsC, t) {
+    pzemVoltageGauge.refresh(v);
+    pzemCurrentGauge.refresh(c);
+    pzemPowerGauge.refresh(p);
+    pzemEnergyGauge.refresh(e);
+    pzemFrequencyGauge.refresh(f);
+    acsCurrentGauge.refresh(acsC);
+    temperatureGuage.refresh(t);
+  }
+
+  setInterval(addManualData, 5000);
+
+  // Function to add manual data from inputs
+  async function addManualData() {
+  // Read inputs & parse float (default 0)
+  const response = await fetch('http://192.168.43.73:8080/last20measurementdatalist');
+  const data = await response.json();
+
+  // Clear existing data arrays
+  timeLabels = [];
+  tempData = [];
+  currData = [];
+
+  for (let i = 0; i < data.length; i++) {
+    const temp = data[i].temperature;
+    const acsCurrent = data[i].acsCurrent;
+    const energy = data[i].energy;
+    const frequency = data[i].frequency;
+    const power = data[i].power;
+    const pzemCurrent = data[i].pzemCurrent;
+    const pzemVoltage = data[i].pzemVoltage;
+
+    // Add current time label
+    const now = getCurrentTime();
+    timeLabels.push(now);
+    tempData.push(temp);
+    currData.push(acsCurrent);
+
+    // Update gauges with new data (last iteration only)
+    if (i === data.length - 1) {
+      updateGauges(pzemVoltage, pzemCurrent, power, energy, frequency, acsCurrent, temp);
+    }
+  }
+
+  // Update charts data and redraw with fresh dataset
+  tempChart.data.labels = timeLabels;
+  tempChart.data.datasets[0].data = tempData;
+  tempChart.update();
+
+  currChart.data.labels = timeLabels;
+  currChart.data.datasets[0].data = currData;
+  currChart.update();
+}
+
+
+</script>
+
+</body>
+</html>
