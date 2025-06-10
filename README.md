@@ -1,5 +1,5 @@
 ## 🔗 Important Links
-- [🔗 ESP32 Code](./esp32/final.ino)
+- 🔗[ ESP32 Code](./esp32/final.ino)
 ## 📌 Features
 
 - REST API for data ingestion and retrieval
